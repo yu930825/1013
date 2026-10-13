@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>勇者拯救公主：AI 知識大冒險</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#1b1b2f;color:#fff;display:flex;justify-content:center}
+#app{width:100%;max-width:900px;padding:12px}
+h1{font-size:20px;margin:6px 0;text-align:center}
+.hud{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+.bar{background:#333;border-radius:8px;height:18px;overflow:hidden;border:2px solid #555}
+.bar>i{display:block;height:100%;transition:width .5s}
+#heroBar>i{background:linear-gradient(#5f5,#2a2)}
+#monBar>i{background:linear-gradient(#f66,#b22)}
+.lbl{font-size:13px;margin-bottom:2px;display:flex;justify-content:space-between}
+.info{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+#stage{position:relative;height:250px;border-radius:12px;overflow:hidden;background:linear-gradient(#7ec8ff,#d6f0ff 70%);border:3px solid #444}
+.layer{position:absolute;left:0;bottom:0;width:100%;height:100%;background-repeat:repeat-x}
+#hills{background-image:radial-gradient(ellipse 160px 90px at 80px 100%,#6bb26b 98%,transparent 100%),radial-gradient(ellipse 120px 60px at 260px 100%,#7cc57c 98%,transparent 100%);background-size:400px 100%;opacity:.9}
+#clouds{background-image:radial-gradient(ellipse 50px 18px at 60px 40px,#fff 90%,transparent),radial-gradient(ellipse 40px 14px at 230px 70px,#fff 90%,transparent);background-size:340px 100%}
+#ground{height:50px;top:auto;background:repeating-linear-gradient(90deg,#8b5a2b 0 60px,#7a4d24 60px 120px);border-top:8px solid #4caf50}
+.walking #hills{animation:sc 4s linear infinite}
+.walking #clouds{animation:sc 9s linear infinite}
+.walking #ground{animation:sc 1.5s linear infinite}
+@keyframes sc{to{background-position-x:-400px}}
+.sprite{position:absolute;bottom:50px;font-size:64px;line-height:1;transition:transform .25s;user-select:none}
+#hero{left:60px}
+#mon{right:80px;font-size:76px;transform:scaleX(-1)}
+#hero.walk{animation:bob .35s infinite alternate}
+@keyframes bob{to{transform:translateY(-8px)}}
+#mon.enter{animation:enter .8s ease-out}
+@keyframes enter{from{right:-120px}to{right:80px}}
+#hero.attack{transform:translateX(280px)}
+#mon.hit{animation:hit .5s}
+@keyframes hit{0%,100%{filter:none}25%{filter:brightness(3) saturate(0);transform:scaleX(-1) translateX(14px)}60%{transform:scaleX(-1) translateX(-10px)}}
+#mon.atk{transform:scaleX(-1) translateX(300px)}
+#hero.hurt{animation:hurt .5s}
+@keyframes hurt{0%,100%{filter:none}25%{filter:brightness(3) hue-rotate(300deg);transform:translateX(-14px)}60%{transform:translateX(10px)}}
+#mon.die{animation:die .9s forwards}
+@keyframes die{to{opacity:0;transform:scaleX(-1) rotate(-90deg) translateY(60px)}}
+#mon.flee{transition:right 1s,opacity 1s;right:-150px;opacity:0}
+#fx{position:absolute;font-size:60px;top:60px;opacity:0;pointer-events:none}
+#fx.show{animation:fx .6s}
+@keyframes fx{0%{opacity:0;transform:scale(.4)}40%{opacity:1;transform:scale(1.3)}100%{opacity:0;transform:scale(1)}}
+#dmg{position:absolute;font-weight:bold;font-size:30px;color:#fff;text-shadow:0 0 6px #000,0 0 6px #000;opacity:0}
+#dmg.show{animation:dm 1s}
+@keyframes dm{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+#panel{margin-top:10px;background:#272744;border-radius:12px;padding:14px;min-height:200px}
+#qno{font-size:13px;color:#aab}
+#qtext{font-size:18px;margin:6px 0 12px;line-height:1.5}
+.opt{display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;font-size:16px;border-radius:8px;border:2px solid #556;background:#33335a;color:#fff;cursor:pointer}
+.opt:hover:not(:disabled){background:#46468a}
+.opt.ok{background:#1e7a3a;border-color:#5f5}
+.opt.ng{background:#8a2530;border-color:#f66}
+.opt:disabled{cursor:default}
+#fb{margin-top:8px;min-height:24px;font-weight:bold}
+button.main{background:#f5b700;color:#222;border:0;border-radius:8px;padding:10px 20px;font-size:16px;font-weight:bold;cursor:pointer;margin:4px}
+button.sub{background:#46468a;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer;margin:4px}
+input{padding:9px;font-size:16px;border-radius:8px;border:2px solid #556;width:200px}
+.center{text-align:center}
+#logwrap{max-height:200px;overflow:auto;margin-top:10px;font-size:11px;display:none}
+table{border-collapse:collapse;white-space:nowrap}
+td,th{border:1px solid #556;padding:2px 5px}
+.big{font-size:42px;margin:6px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>⚔️ 勇者拯救公主：AI 知識大冒險 👸</h1>
+  <div class="hud">
+    <div><div class="lbl"><span>🦸 勇者</span><span id="heroTxt">100/100</span></div><div class="bar" id="heroBar"><i style="width:100%"></i></div></div>
+    <div><div class="lbl"><span id="monName">👾 怪獸</span><span id="monTxt">100/100</span></div><div class="bar" id="monBar"><i style="width:100%"></i></div></div>
+  </div>
+  <div class="info"><span id="roundTxt">第 0 / 10 題</span><span id="scoreTxt">分數：0</span></div>
+  <div id="stage">
+    <div class="layer" id="clouds"></div><div class="layer" id="hills"></div><div class="layer" id="ground"></div>
+    <div class="sprite" id="hero">🦸</div>
+    <div class="sprite" id="mon" style="display:none">👾</div>
+    <div id="fx"></div><div id="dmg"></div>
+  </div>
+  <div id="panel"></div>
+  <div id="logwrap"></div>
+</div>
+
+<script>
+/* ===== 題庫：自 PDF 題庫選出 10 題 ===== */
+const QUESTIONS=[
+{no:3,page:1,q:"機器學習有三種主要的類型：監督學習、非監督學習和_____學習，各自有著不同的特點。",o:["自主","優化","重複","強化"],a:"D"},
+{no:8,page:1,q:"ANN 是一種模仿生物神經網路，其中的_____扮演了生物神經模型中突觸的角色，用於調節一個神經元對另一個神經元的影響程度。",o:["權重","輸出通道","輸入通道","細胞體"],a:"A"},
+{no:9,page:1,q:"國際自動機工程師學會(SAE International)定義的自動駕駛為六級，「完全自動駕駛」的車輛是指哪一級？",o:["等級 0 (Level 0)","等級 4 (Level 4)","等級 5 (Level 5)","等級 1 (Level 1)"],a:"C"},
+{no:12,page:1,q:"_____是人工智慧的核心技術之一，是使計算機具有智慧的根本途徑，其應用遍及人工智慧的各個領域，它主要使用歸納、綜合而不是演繹。",o:["強化學習","機器學習","推薦引擎","搜尋引擎"],a:"B"},
+{no:24,page:2,q:"產品生命週期管理是一種對智慧工廠所有與產品相關的資料、在其整個生命週期內進行管理的技術，英文簡稱為_____。",o:["CPS","PLM","Internet","AGV"],a:"B"},
+{no:37,page:2,q:"運用人工智慧機器演算法建立的模型，有時會去「背考古題」，遇過的題目全部都會，但對於未見過的問題，卻會回答得很離譜，這種情況稱作_____。",o:["syntax error (語法錯誤)","over guess (過度猜想)","overfitting (過度擬合)","just make it (正好)"],a:"C"},
+{no:41,page:2,q:"神經網路每一層神經元的輸出，就是下一層的輸入層，如此一層一層地傳遞下去，這種神經網路又稱為_____。",o:["卷積神經網路 (CNN)","深度置信網路 (DBN)","遞迴神經網路 (RNN)","前饋神經網路 (feedforward)"],a:"D"},
+{no:45,page:3,q:"「人工智慧物聯網」的英文縮寫是_____。",o:["Smart IoT","AI","IoT","AIoT"],a:"D"},
+{no:60,page:3,q:"線上影片租賃服務商 Netflix (網飛)的主要經營業務是提供 Internet 隨選流媒體播放，它所依賴的關鍵服務是_____。",o:["谷歌引擎","搜尋引擎","百度引擎","推薦引擎"],a:"D"},
+{no:67,page:4,q:"大數據的資料存儲單位，1 TB (terabyte) = _____。",o:["1,024 MB","1,024 KB","1,024 PB","1,024 GB"],a:"D"}
+];
+const MONSTERS=[["🟢 史萊姆","🟢"],["🦇 蝙蝠怪","🦇"],["💀 骷髏兵","💀"],["👹 食人魔","👹"],["🐉 魔王巨龍","🐉"]];
+const HERO_MAX=100, MON_MAX=100, DMG_BOSS=50, DMG_PLAYER=20, PTS=10, VERSION="1.0.0";
+const COLS=['ReceivedAt','EventID','SessionID','PlayerID','Sequence','EventType','GameVersion','Round','QuestionID','SourcePage','SourceQuestionNo','SelectedOption','CorrectOption','IsCorrect','ResponseMs','ElapsedMs','DamageToPlayer','DamageToBoss','Score','CorrectCount','Ending','RequestHash','ResponseJSON'];
+
+/* ===== 狀態與紀錄 ===== */
+const $=id=>document.getElementById(id);
+let S, LOG=[];
+const uid=()=>'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=='x'?r:(r&3|8)).toString(16)});
+const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;return h.toString(16).padStart(8,'0')};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function log(type,x={}){
+  const row={ReceivedAt:new Date().toISOString(),EventID:uid(),SessionID:S.session,PlayerID:S.player,Sequence:++S.seq,EventType:type,GameVersion:VERSION,
+    Round:x.Round??'',QuestionID:x.QuestionID??'',SourcePage:x.SourcePage??'',SourceQuestionNo:x.SourceQuestionNo??'',SelectedOption:x.SelectedOption??'',CorrectOption:x.CorrectOption??'',
+    IsCorrect:x.IsCorrect??'',ResponseMs:x.ResponseMs??'',ElapsedMs:Math.round(performance.now()-S.t0),DamageToPlayer:x.DamageToPlayer??0,DamageToBoss:x.DamageToBoss??0,
+    Score:S.score,CorrectCount:S.correct,Ending:x.Ending??''};
+  row.ResponseJSON=JSON.stringify({heroHP:S.hero,monsterHP:S.mon,monster:MONSTERS[S.mi]?.[0]??'',...(x.extra||{})});
+  row.RequestHash=hash(COLS.filter(c=>c!='RequestHash'&&c!='ResponseJSON').map(c=>row[c]).join('|')+row.ResponseJSON);
+  LOG.push(row);
+}
+
+/* ===== UI 輔助 ===== */
+function updHUD(){
+  $('heroTxt').textContent=Math.max(S.hero,0)+'/'+HERO_MAX;
+  $('heroBar').firstElementChild.style.width=Math.max(S.hero,0)/HERO_MAX*100+'%';
+  $('monTxt').textContent=Math.max(S.mon,0)+'/'+MON_MAX;
+  $('monBar').firstElementChild.style.width=Math.max(S.mon,0)/MON_MAX*100+'%';
+  $('scoreTxt').textContent='分數：'+S.score;
+  $('roundTxt').textContent='第 '+Math.min(S.round+1,10)+' / 10 題';
+}
+async function anim(el,cls,ms){el.classList.add(cls);await sleep(ms);el.classList.remove(cls)}
+function popDmg(txt,side,color){
+  const d=$('dmg');d.textContent=txt;d.style.color=color;d.style.left=side=='mon'?'72%':'12%';d.style.top='70px';
+  d.classList.remove('show');void d.offsetWidth;d.classList.add('show');
+}
+function fx(emoji,left){const f=$('fx');f.textContent=emoji;f.style.left=left;f.classList.remove('show');void f.offsetWidth;f.classList.add('show')}
+async function walk(ms){$('stage').classList.add('walking');$('hero').classList.add('walk');await sleep(ms);$('stage').classList.remove('walking');$('hero').classList.remove('walk')}
+
+/* ===== 流程 ===== */
+function showStart(){
+  $('panel').innerHTML=`<div class="center"><div class="big">🏰</div>
+  <p>邪惡魔王擄走了公主！勇者必須穿越森林，擊敗沿途怪獸。<br>答對 → 勇者攻擊，怪獸扣血（-${DMG_BOSS}）<br>答錯 → 怪獸反擊，勇者扣血（-${DMG_PLAYER}）<br>共 10 題，勇者存活到最後即可救出公主！</p>
+  <p>玩家 ID：<input id="pid" placeholder="請輸入暱稱" maxlength="20"></p>
+  <button class="main" onclick="startGame()">開始冒險</button></div>`;
+}
+async function startGame(){
+  const pid=$('pid').value.trim()||('Player_'+Math.floor(Math.random()*9000+1000));
+  S={player:pid,session:uid(),seq:0,t0:performance.now(),hero:HERO_MAX,mon:MON_MAX,mi:0,round:0,score:0,correct:0,busy:false};
+  LOG=[];$('logwrap').style.display='none';
+  $('mon').className='sprite';$('mon').style.display='none';$('hero').textContent='🦸';
+  log('GAME_START');updHUD();
+  await nextRound();
+}
+async function nextRound(){
+  const newMon=S.round%2==0;
+  $('panel').innerHTML='<div class="center" style="padding:60px 0">🚶 勇者前進中……</div>';
+  if(newMon){
+    S.mi=S.round/2;S.mon=MON_MAX;
+    $('mon').className='sprite';$('mon').style.display='none';
+    await walk(2200);
+    const m=$('mon');m.textContent=MONSTERS[S.mi][1];m.style.right='';m.style.display='block';
+    $('monName').textContent=MONSTERS[S.mi][0];updHUD();
+    await anim(m,'enter',800);
+  }else{updHUD()}
+  showQuestion();
+}
+function showQuestion(){
+  const q=QUESTIONS[S.round];
+  S.qShown=performance.now();S.busy=false;
+  const L=['A','B','C','D'];
+  $('panel').innerHTML=`<div id="qno">第 ${S.round+1} 題　（題庫第 ${q.page} 頁・第 ${q.no} 題）</div><div id="qtext">${q.q}</div>`+
+    q.o.map((t,i)=>`<button class="opt" data-k="${L[i]}" onclick="answer('${L[i]}')">(${L[i]}) ${t}</button>`).join('')+'<div id="fb"></div>';
+  log('QUESTION_SHOWN',{Round:S.round+1,QuestionID:'Q'+String(q.no).padStart(3,'0'),SourcePage:q.page,SourceQuestionNo:q.no,CorrectOption:q.a});
+}
+async function answer(sel){
+  if(S.busy)return;S.busy=true;
+  const q=QUESTIONS[S.round],rt=Math.round(performance.now()-S.qShown),ok=sel===q.a;
+  document.querySelectorAll('.opt').forEach(b=>{b.disabled=true;if(b.dataset.k===q.a)b.classList.add('ok');else if(b.dataset.k===sel)b.classList.add('ng')});
+  let dp=0,db=0;
+  if(ok){
+    db=DMG_BOSS;S.correct++;S.score+=PTS;
+    $('fb').innerHTML='✅ 答對了！勇者發動攻擊！';
+    await anim($('hero'),'attack',350);fx('⚔️','60%');popDmg('-'+db,'mon','#ff6');
+    S.mon=Math.max(S.mon-db,0);updHUD();await anim($('mon'),'hit',500);
+    await sleep(250);$('hero').style.transform='';
+  }else{
+    dp=DMG_PLAYER;S.hero=Math.max(S.hero-dp,0);
+    $('fb').innerHTML='❌ 答錯了！正確答案是 ('+q.a+')。怪獸反擊！';
+    await anim($('mon'),'atk',350);fx('💥','15%');popDmg('-'+dp,'hero','#f66');
+    updHUD();await anim($('hero'),'hurt',500);
+  }
+  log('ANSWER_SUBMITTED',{Round:S.round+1,QuestionID:'Q'+String(q.no).padStart(3,'0'),SourcePage:q.page,SourceQuestionNo:q.no,SelectedOption:sel,CorrectOption:q.a,IsCorrect:ok?1:0,ResponseMs:rt,DamageToPlayer:dp,DamageToBoss:db});
+  await sleep(700);
+  if(S.hero<=0){return end('FAIL')}
+  // 該怪獸的第 2 題結束
+  if(S.round%2==1){
+    if(S.mon<=0){$('fb').innerHTML='🎉 怪獸被擊倒了！';await anim($('mon'),'die',900)}
+    else{$('fb').innerHTML='💨 怪獸負傷逃走了……';$('mon').classList.add('flee');await sleep(1000)}
+    $('mon').style.display='none';
+  }
+  if(S.round>=9)return end('SUCCESS');
+  S.round++;await nextRound();
+}
+async function end(ending){
+  log('GAME_END',{Ending:ending,Round:Math.min(S.round+1,10)});
+  S.round=Math.min(S.round,9);updHUD();
+  const win=ending==='SUCCESS';
+  if(win){$('mon').style.display='none';await walk(1500);$('hero').textContent='🦸';}
+  else{$('hero').textContent='😵'}
+  $('panel').innerHTML=`<div class="center"><div class="big">${win?'👸❤️🦸':'💀'}</div>
+    <h2>${win?'🎉 成功結局：勇者救出了公主！':'😢 失敗結局：勇者倒下了……'}</h2>
+    <p>${win?'勇者歷經重重考驗，帶著公主平安回到王國，AI 知識也大幅提升！':'魔王的勢力依然籠罩著王國，請勇者重新挑戰！'}</p>
+    <p style="font-size:20px">總分：<b>${S.score}</b> / 100　答對：${S.correct} 題　剩餘血量：${S.hero}</p>
+    <button class="main" onclick="startGame()">再玩一次</button>
+    <button class="sub" onclick="dlCSV()">下載紀錄 (CSV)</button>
+    <button class="sub" onclick="dlXLSX()">下載紀錄 (Excel)</button>
+    <button class="sub" onclick="toggleLog()">檢視操作紀錄</button></div>`;
+}
+
+/* ===== 紀錄匯出（欄位對應 02_遊玩紀錄欄位.xlsx 的 GameLog 工作表） ===== */
+const fname=ext=>`GameLog_${S.player}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'')}.${ext}`;
+function save(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function dlCSV(){
+  const esc=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv='\ufeff'+[COLS.join(',')].concat(LOG.map(r=>COLS.map(c=>esc(r[c])).join(','))).join('\r\n');
+  save(new Blob([csv],{type:'text/csv;charset=utf-8'}),fname('csv'));
+}
+function dlXLSX(){
+  const go=()=>{const ws=XLSX.utils.json_to_sheet(LOG,{header:COLS});const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'GameLog');XLSX.writeFile(wb,fname('xlsx'))};
+  if(window.XLSX)return go();
+  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=go;s.onerror=()=>{alert('無法載入 Excel 元件（需要網路），已改為下載 CSV，Excel 可直接開啟。');dlCSV()};
+  document.head.appendChild(s);
+}
+function toggleLog(){
+  const w=$('logwrap');
+  if(w.style.display==='block'){w.style.display='none';return}
+  w.innerHTML='<table><tr>'+COLS.map(c=>`<th>${c}</th>`).join('')+'</tr>'+LOG.map(r=>'<tr>'+COLS.map(c=>`<td>${String(r[c]).replace(/</g,'&lt;')}</td>`).join('')+'</tr>').join('')+'</table>';
+  w.style.display='block';
+}
+S={hero:HERO_MAX,mon:MON_MAX,mi:0,round:0,score:0};updHUD();showStart();
+</script>
+</body>
+</html>
