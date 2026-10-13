@@ -100,6 +100,8 @@ const QUESTIONS=[
 ];
 const MONSTERS=[["🟢 史萊姆","🟢"],["🦇 蝙蝠怪","🦇"],["💀 骷髏兵","💀"],["👹 食人魔","👹"],["🐉 魔王巨龍","🐉"]];
 const HERO_MAX=100, MON_MAX=100, DMG_BOSS=50, DMG_PLAYER=20, PTS=10, VERSION="1.0.0";
+/* 部署 GAS 後，把「網頁應用程式網址」貼在這裡（以 /exec 結尾） */
+const GAS_URL="https://script.google.com/macros/s/AKfycbzhSXIUeUNyPBSXV-CnXT5GUFz4pjMP3fcqtWnr-al9hr1FZdmlLOnzQaw0Wb13IncP/exec";
 const COLS=['ReceivedAt','EventID','SessionID','PlayerID','Sequence','EventType','GameVersion','Round','QuestionID','SourcePage','SourceQuestionNo','SelectedOption','CorrectOption','IsCorrect','ResponseMs','ElapsedMs','DamageToPlayer','DamageToBoss','Score','CorrectCount','Ending','RequestHash','ResponseJSON'];
 
 /* ===== 狀態與紀錄 ===== */
@@ -117,6 +119,11 @@ function log(type,x={}){
   row.ResponseJSON=JSON.stringify({heroHP:S.hero,monsterHP:S.mon,monster:MONSTERS[S.mi]?.[0]??'',...(x.extra||{})});
   row.RequestHash=hash(COLS.filter(c=>c!='RequestHash'&&c!='ResponseJSON').map(c=>row[c]).join('|')+row.ResponseJSON);
   LOG.push(row);
+  sendToSheet(row);
+}
+function sendToSheet(row){
+  if(!GAS_URL)return;
+  try{fetch(GAS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(row)}).catch(()=>{})}catch(e){}
 }
 
 /* ===== UI 輔助 ===== */
